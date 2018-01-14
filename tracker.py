@@ -8,8 +8,8 @@ import cv2
 import sys
 import numpy as np
 
-THRESHOLD = 25
-BLUR_LEVEL = 7
+THRESHOLD = 15
+BLUR_LEVEL = 15
 DILATE_ITERATIONS = 5
 HARDNESS = 2
 
@@ -27,11 +27,15 @@ def getFrame(camera):
 
 def processFrame(frame):
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    return cv2.GaussianBlur(gray, (BLUR_LEVEL, BLUR_LEVEL), 0)
+    if BLUR_LEVEL > 1:
+        gray = cv2.GaussianBlur(gray, (BLUR_LEVEL, BLUR_LEVEL), 0)
+    return gray
 
 if __name__ == "__main__":
+    cv2.namedWindow("Tracker", cv2.WINDOW_NORMAL | cv2.WINDOW_KEEPRATIO | cv2.WINDOW_GUI_EXPANDED)
     camera = cv2.VideoCapture(0)
     prevFrame = processFrame(getFrame(camera))
+    prevPoints = None
     bitmask = cv2.absdiff(prevFrame, prevFrame)
     while True:
         rawFrame = getFrame(camera)
@@ -43,6 +47,10 @@ if __name__ == "__main__":
         softBitmask = bitmask // HARDNESS
         rawFrame[..., 0] += softBitmask
         rawFrame[rawFrame[..., 0] < softBitmask, 0] = 255
-        cv2.imshow("Frame", rawFrame)
+        cv2.imshow("Tracker", rawFrame)
         checkExit()
         prevFrame = frame
+        points = np.count_nonzero(bitmask)
+        if prevPoints != points:
+            prevPoints = points
+            print("Points:", points)
