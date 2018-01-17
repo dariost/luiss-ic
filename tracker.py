@@ -13,10 +13,20 @@ BLUR_LEVEL = 15
 DILATE_ITERATIONS = 5
 HARDNESS = 2
 
+COLOR_R = 220/255
+COLOR_G = 16/255
+COLOR_B = 193/255
+
 def checkExit():
     key = cv2.waitKey(1) & 0xFF
     if key == ord("q"):
         sys.exit(0)
+    try:
+        if cv2.getWindowProperty("Tracker", 0) < 0:
+            sys.exit(0)
+    except:
+        sys.exit(0)
+
 
 def getFrame(camera):
     grabbed, frame = camera.read()
@@ -45,8 +55,12 @@ if __name__ == "__main__":
         thresh = cv2.dilate(thresh, None, iterations=DILATE_ITERATIONS)
         bitmask = np.maximum(bitmask, thresh)
         softBitmask = bitmask // HARDNESS
-        rawFrame[..., 0] += softBitmask
-        rawFrame[rawFrame[..., 0] < softBitmask, 0] = 255
+        rawFrame[..., 0] += (softBitmask * COLOR_B).astype(np.uint8)
+        rawFrame[rawFrame[..., 0] < (softBitmask * COLOR_B).astype(np.uint8), 0] = 255
+        rawFrame[..., 1] += (softBitmask * COLOR_G).astype(np.uint8)
+        rawFrame[rawFrame[..., 1] < (softBitmask * COLOR_G).astype(np.uint8), 1] = 255
+        rawFrame[..., 2] += (softBitmask * COLOR_R).astype(np.uint8)
+        rawFrame[rawFrame[..., 2] < (softBitmask * COLOR_R).astype(np.uint8), 2] = 255
         cv2.imshow("Tracker", rawFrame)
         checkExit()
         prevFrame = frame
