@@ -67,15 +67,16 @@ def processFrame(rawFrame, prevFrame, bitmask):
     return frame, bitmask
 
 def scaleTuple(f, t):
-   t = (int(t[0]*f), int(t[1]*f), int(t[2]*f))
-   print(t)
-   return t
+   return (int(t[0]*f), int(t[1]*f), int(t[2]*f))
+
+def sumTuple(t1, t2):
+    return (t1[0] + t2[0], t1[1] + t2[1], t1[2] + t2[2])
 
 def convertColor(perc):
     if perc < 0.5:
-        return scaleTuple(2*perc, (0, 255, 255)) + scaleTuple(1-2*perc, (0, 0, 255))
+        return sumTuple(scaleTuple(2*perc, (0, 255, 255)), scaleTuple(1-2*perc, (0, 0, 255)))
     else:
-        return scaleTuple(2*(perc-0.5), (0, 255, 0)) + scaleTuple(1-2*(perc-0.5), (0, 255, 255))
+        return sumTuple(scaleTuple(2*(perc-0.5), (0, 255, 0)), scaleTuple(1-2*(perc-0.5), (0, 255, 255)))
 
 if __name__ == "__main__":
     cv2.namedWindow("Tracker", cv2.WINDOW_NORMAL | cv2.WINDOW_KEEPRATIO | cv2.WINDOW_GUI_EXPANDED)
