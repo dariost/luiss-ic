@@ -23,7 +23,7 @@ COLOR_R = 220/255
 COLOR_G = 16/255
 COLOR_B = 193/255
 
-DURATION = 3
+DURATION = 10
 
 started = False
 startTime = None
@@ -66,6 +66,16 @@ def processFrame(rawFrame, prevFrame, bitmask):
     bitmask = np.maximum(bitmask, thresh)
     return frame, bitmask
 
+def scaleTuple(f, t):
+   t = (int(t[0]*f), int(t[1]*f), int(t[2]*f))
+   print(t)
+   return t
+
+def convertColor(perc):
+    if perc < 0.5:
+        return scaleTuple(2*perc, (0, 255, 255)) + scaleTuple(1-2*perc, (0, 0, 255))
+    else:
+        return scaleTuple(2*(perc-0.5), (0, 255, 0)) + scaleTuple(1-2*(perc-0.5), (0, 255, 255))
 
 if __name__ == "__main__":
     cv2.namedWindow("Tracker", cv2.WINDOW_NORMAL | cv2.WINDOW_KEEPRATIO | cv2.WINDOW_GUI_EXPANDED)
@@ -97,8 +107,9 @@ if __name__ == "__main__":
         points = np.count_nonzero(bitmask)
 
         if startTime is not None:
-            cv2.putText(rawFrame, "Score: %d" % points, (50, 50), cv2.FONT_HERSHEY_TRIPLEX, 1, (0, 0, 255))
-            cv2.putText(rawFrame, "Tempo: %.2fs" % (max(0, startTime+DURATION-time.time())), (50, 100), cv2.FONT_HERSHEY_TRIPLEX, 1, (0, 0, 255))
+            perc = max(0, startTime+DURATION-time.time()) / DURATION
+            cv2.putText(rawFrame, "Score: %d (%.2f%%)" % (points, points*100/WIDTH/HEIGHT), (20, 40), cv2.FONT_HERSHEY_TRIPLEX, 1, convertColor(points/WIDTH/HEIGHT))
+            cv2.putText(rawFrame, "Time: %.2fs" % (perc*DURATION), (20, 80), cv2.FONT_HERSHEY_TRIPLEX, 1, convertColor(perc))
         cv2.imshow("Tracker", rawFrame)
         if prevPoints != points:
             prevPoints = points
