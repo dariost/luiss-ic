@@ -9,6 +9,9 @@ import sys
 import numpy as np
 import time
 
+WIDTH = 800
+HEIGHT = 600
+
 THRESHOLD = 15
 BLUR_LEVEL = 15
 DILATE_ITERATIONS = 5
@@ -67,6 +70,8 @@ def processFrame(rawFrame, prevFrame, bitmask):
 if __name__ == "__main__":
     cv2.namedWindow("Tracker", cv2.WINDOW_NORMAL | cv2.WINDOW_KEEPRATIO | cv2.WINDOW_GUI_EXPANDED)
     camera = cv2.VideoCapture(CAMERA)
+    camera.set(3, WIDTH)
+    camera.set(4, HEIGHT)
     prevPoints = None
     stopped = False
     while True:
