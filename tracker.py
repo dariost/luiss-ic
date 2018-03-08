@@ -8,22 +8,24 @@ import cv2
 import sys
 import numpy as np
 import time
+import subprocess
+import platform
 
-WIDTH = 800
-HEIGHT = 600
+WIDTH = 640
+HEIGHT = 480
 
 THRESHOLD = 15
 BLUR_LEVEL = 15
 DILATE_ITERATIONS = 5
 HARDNESS = 2
 
-CAMERA = 1
+CAMERA = 0
 
-COLOR_R = 220/255
-COLOR_G = 16/255
-COLOR_B = 193/255
+COLOR_R = 220 / 255
+COLOR_G =  16 / 255
+COLOR_B = 193 / 255
 
-DURATION = 10
+DURATION = 120
 
 started = False
 startTime = None
@@ -67,18 +69,25 @@ def processFrame(rawFrame, prevFrame, bitmask):
     return frame, bitmask
 
 def scaleTuple(f, t):
-   return (int(t[0]*f), int(t[1]*f), int(t[2]*f))
+   return (int(t[0] * f), int(t[1] * f), int(t[2] * f))
 
 def sumTuple(t1, t2):
     return (t1[0] + t2[0], t1[1] + t2[1], t1[2] + t2[2])
 
 def convertColor(perc):
     if perc < 0.5:
-        return sumTuple(scaleTuple(2*perc, (0, 255, 255)), scaleTuple(1-2*perc, (0, 0, 255)))
+        return sumTuple(scaleTuple(2 * perc, (0, 255, 255)), scaleTuple(1 - 2 * perc, (0, 0, 255)))
     else:
-        return sumTuple(scaleTuple(2*(perc-0.5), (0, 255, 0)), scaleTuple(1-2*(perc-0.5), (0, 255, 255)))
+        return sumTuple(scaleTuple(2 * (perc - 0.5), (0, 255, 0)), scaleTuple(1 - 2 * (perc - 0.5), (0, 255, 255)))
 
 if __name__ == "__main__":
+    if platform.system() in ("Linux",):
+        ffout = subprocess.run(["ffmpeg",  "-f",  "v4l2", "-list_formats", "all", "-i", "/dev/video" + str(CAMERA)], stderr=subprocess.PIPE)
+        resolutions = [tuple(map(int, y)) for y in [x.split("x") for x in ffout.stderr.decode().split("\n")[-3].split(":")[-1].strip().split(" ")]]
+        if (WIDTH, HEIGHT) not in resolutions:
+            print((WIDTH, HEIGHT), "resolution is not supported")
+            print("Supported resolution are:", resolutions)
+            sys.exit(1)
     cv2.namedWindow("Tracker", cv2.WINDOW_NORMAL | cv2.WINDOW_KEEPRATIO | cv2.WINDOW_GUI_EXPANDED)
     camera = cv2.VideoCapture(CAMERA)
     camera.set(3, WIDTH)
@@ -108,9 +117,9 @@ if __name__ == "__main__":
         points = np.count_nonzero(bitmask)
 
         if startTime is not None:
-            perc = max(0, startTime+DURATION-time.time()) / DURATION
-            cv2.putText(rawFrame, "Score: %d (%.2f%%)" % (points, points*100/WIDTH/HEIGHT), (20, 40), cv2.FONT_HERSHEY_TRIPLEX, 1, convertColor(points/WIDTH/HEIGHT))
-            cv2.putText(rawFrame, "Time: %.2fs" % (perc*DURATION), (20, 80), cv2.FONT_HERSHEY_TRIPLEX, 1, convertColor(perc))
+            perc = max(0, startTime + DURATION - time.time()) / DURATION
+            cv2.putText(rawFrame, "Score: %d (%.2f%%)" % (points, points * 100 / WIDTH / HEIGHT), (20, 40), cv2.FONT_HERSHEY_TRIPLEX, 1, convertColor(points / WIDTH / HEIGHT))
+            cv2.putText(rawFrame, "Time: %.2fs" % (perc * DURATION), (20, 80), cv2.FONT_HERSHEY_TRIPLEX, 1, convertColor(perc))
         cv2.imshow("Tracker", rawFrame)
         if prevPoints != points:
             prevPoints = points
