@@ -17,6 +17,7 @@ CAMERA = 1
 SCORE_MULT = 1.0
 DURATION = 120
 START_ON_MOVE = True
+NO_DELTA_TIMEOUT = 6
 
 THRESHOLD = 15
 BLUR_LEVEL = 15
@@ -70,8 +71,9 @@ def processFrame(rawFrame, prevFrame, bitmask):
     diff = cv2.absdiff(prevFrame, frame)
     thresh = cv2.threshold(diff, THRESHOLD, 255, cv2.THRESH_BINARY)[1]
     thresh = cv2.dilate(thresh, None, iterations=DILATE_ITERATIONS)
+    flag = np.count_nonzero(thresh) == 0
     bitmask = np.maximum(bitmask, thresh)
-    return frame, bitmask
+    return frame, bitmask, flag
 
 def scaleTuple(f, t):
     return (int(t[0] * f), int(t[1] * f), int(t[2] * f))
@@ -99,7 +101,9 @@ if __name__ == "__main__":
     camera.set(4, HEIGHT)
     prevPoints = None
     stopped = False
+    startDeltaTime = time.time()
     while True:
+        no_delta = False
         processInput()
         rawFrame = getFrame(camera)
         if reset:
@@ -110,12 +114,14 @@ if __name__ == "__main__":
             prevPoints = None
             stopped = False
             started = False
+            startDeltaTime = time.time()
             print("Reset")
         elif not started:
             prevFrame = preprocessFrame(getFrame(camera))
             bitmask = cv2.absdiff(prevFrame, prevFrame)
+            startDeltaTime = time.time()
         elif startTime + DURATION > time.time():
-            frame, bitmask = processFrame(rawFrame, prevFrame, bitmask)
+            frame, bitmask, no_delta = processFrame(rawFrame, prevFrame, bitmask)
             prevFrame = frame
         elif not stopped:
             print("Stopped")
@@ -130,12 +136,20 @@ if __name__ == "__main__":
         rawFrame[rawFrame[..., 2] < (softBitmask * COLOR_R).astype(np.uint8), 2] = 255
         points = np.count_nonzero(bitmask)
 
+        if not no_delta and not stopped:
+            startDeltaTime = time.time()
+
         if startTime is not None:
             if START_ON_MOVE and points == 0:
                 startTime = time.time()
+                startDeltaTime = time.time()
             perc = max(0, startTime + DURATION - time.time()) / DURATION
+            percDelta = max(0, startDeltaTime + NO_DELTA_TIMEOUT - time.time()) / NO_DELTA_TIMEOUT
             cv2.putText(rawFrame, "Score: %d (%.2f%%)" % (int(SCORE_MULT * points), points * 100 / WIDTH / HEIGHT), (20, 40), cv2.FONT_HERSHEY_TRIPLEX, 1, convertColor(points / WIDTH / HEIGHT))
             cv2.putText(rawFrame, "Time: %.2fs" % (perc * DURATION), (20, 80), cv2.FONT_HERSHEY_TRIPLEX, 1, convertColor(perc))
+            cv2.putText(rawFrame, "Timeout: %.2fs" % (percDelta * NO_DELTA_TIMEOUT), (20, 120), cv2.FONT_HERSHEY_TRIPLEX, 1, convertColor(percDelta))
+            if percDelta <= 0.0:
+                startTime -= DURATION
         cv2.imshow("Tracker", rawFrame)
         if prevPoints != points:
             prevPoints = points
