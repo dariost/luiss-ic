@@ -11,15 +11,16 @@ import time
 import subprocess
 import platform
 
-WIDTH = 640
-HEIGHT = 480
+WIDTH = 800
+HEIGHT = 600
 
 THRESHOLD = 15
 BLUR_LEVEL = 15
 DILATE_ITERATIONS = 5
 HARDNESS = 2
-
-CAMERA = 0
+START_ON_MOVE = True
+SCORE_MULT = 1.0
+CAMERA = 1
 
 COLOR_R = 220 / 255
 COLOR_G =  16 / 255
@@ -29,10 +30,12 @@ DURATION = 120
 
 started = False
 startTime = None
+reset = False
 
 def processInput():
     global started
     global startTime
+    global reset
     key = cv2.waitKey(1) & 0xFF
     if key == ord("q"):
         sys.exit(0)
@@ -40,6 +43,10 @@ def processInput():
         started = True
         startTime = time.time()
         print("Started")
+    elif key == ord(" ") and started:
+        startTime -= DURATION
+    if key == ord("r"):
+        reset = True
     try:
         if cv2.getWindowProperty("Tracker", 0) < 0:
             sys.exit(0)
@@ -69,7 +76,7 @@ def processFrame(rawFrame, prevFrame, bitmask):
     return frame, bitmask
 
 def scaleTuple(f, t):
-   return (int(t[0] * f), int(t[1] * f), int(t[2] * f))
+    return (int(t[0] * f), int(t[1] * f), int(t[2] * f))
 
 def sumTuple(t1, t2):
     return (t1[0] + t2[0], t1[1] + t2[1], t1[2] + t2[2])
@@ -97,7 +104,16 @@ if __name__ == "__main__":
     while True:
         processInput()
         rawFrame = getFrame(camera)
-        if not started:
+        if reset:
+            reset = False
+            prevFrame = preprocessFrame(getFrame(camera))
+            bitmask = cv2.absdiff(prevFrame, prevFrame)
+            startTime = None
+            prevPoints = None
+            stopped = False
+            started = False
+            print("Reset")
+        elif not started:
             prevFrame = preprocessFrame(getFrame(camera))
             bitmask = cv2.absdiff(prevFrame, prevFrame)
         elif startTime + DURATION > time.time():
@@ -117,10 +133,12 @@ if __name__ == "__main__":
         points = np.count_nonzero(bitmask)
 
         if startTime is not None:
+            if START_ON_MOVE and points == 0:
+                startTime = time.time()
             perc = max(0, startTime + DURATION - time.time()) / DURATION
-            cv2.putText(rawFrame, "Score: %d (%.2f%%)" % (points, points * 100 / WIDTH / HEIGHT), (20, 40), cv2.FONT_HERSHEY_TRIPLEX, 1, convertColor(points / WIDTH / HEIGHT))
+            cv2.putText(rawFrame, "Score: %d (%.2f%%)" % (int(SCORE_MULT * points), points * 100 / WIDTH / HEIGHT), (20, 40), cv2.FONT_HERSHEY_TRIPLEX, 1, convertColor(points / WIDTH / HEIGHT))
             cv2.putText(rawFrame, "Time: %.2fs" % (perc * DURATION), (20, 80), cv2.FONT_HERSHEY_TRIPLEX, 1, convertColor(perc))
         cv2.imshow("Tracker", rawFrame)
         if prevPoints != points:
             prevPoints = points
-            print("Points:", points)
+            print("Points:", int(SCORE_MULT * points))
