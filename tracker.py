@@ -13,20 +13,19 @@ import platform
 
 WIDTH = 800
 HEIGHT = 600
+CAMERA = 1
+SCORE_MULT = 1.0
+DURATION = 120
+START_ON_MOVE = True
 
 THRESHOLD = 15
 BLUR_LEVEL = 15
 DILATE_ITERATIONS = 5
 HARDNESS = 2
-START_ON_MOVE = True
-SCORE_MULT = 1.0
-CAMERA = 1
 
 COLOR_R = 220 / 255
 COLOR_G =  16 / 255
 COLOR_B = 193 / 255
-
-DURATION = 120
 
 started = False
 startTime = None
@@ -52,7 +51,6 @@ def processInput():
             sys.exit(0)
     except:
         sys.exit(0)
-
 
 def getFrame(camera):
     grabbed, frame = camera.read()
