@@ -11,11 +11,17 @@ import time
 import subprocess
 import platform
 
-WIDTH = 800
-HEIGHT = 600
-CAMERA = 1
+WIDTH = 640
+HEIGHT = 480
+CROPPED_X = 0
+CROPPED_Y = 0
+CROP_X = (CROPPED_X, WIDTH - CROPPED_X)
+CROP_Y = (CROPPED_Y, HEIGHT - CROPPED_Y)
+TRUE_WIDTH = CROP_X[1] - CROP_X[0]
+TRUE_HEIGHT = CROP_Y[1] - CROP_Y[0]
+CAMERA = 0
 SCORE_MULT = 1.0
-DURATION = 120
+DURATION = 90
 START_ON_MOVE = True
 NO_DELTA_TIMEOUT = 6
 
@@ -58,6 +64,7 @@ def getFrame(camera):
     if not grabbed:
         print("WTF²?")
         sys.exit(1)
+    frame = frame[CROP_Y[0]:CROP_Y[1], CROP_X[0]:CROP_X[1]]
     return frame
 
 def preprocessFrame(frame):
@@ -145,7 +152,9 @@ if __name__ == "__main__":
                 startDeltaTime = time.time()
             perc = max(0, startTime + DURATION - time.time()) / DURATION
             percDelta = max(0, startDeltaTime + NO_DELTA_TIMEOUT - time.time()) / NO_DELTA_TIMEOUT
-            cv2.putText(rawFrame, "Score: %d (%.2f%%)" % (int(SCORE_MULT * points), points * 100 / WIDTH / HEIGHT), (20, 40), cv2.FONT_HERSHEY_TRIPLEX, 1, convertColor(points / WIDTH / HEIGHT))
+            if percDelta * NO_DELTA_TIMEOUT > perc * DURATION:
+                percDelta = perc * DURATION / NO_DELTA_TIMEOUT
+            cv2.putText(rawFrame, "Score: %d (%.2f%%)" % (int(SCORE_MULT * points), points * 100 / TRUE_WIDTH / TRUE_HEIGHT), (20, 40), cv2.FONT_HERSHEY_TRIPLEX, 1, convertColor(points / TRUE_WIDTH / TRUE_HEIGHT))
             cv2.putText(rawFrame, "Time: %.2fs" % (perc * DURATION), (20, 80), cv2.FONT_HERSHEY_TRIPLEX, 1, convertColor(perc))
             cv2.putText(rawFrame, "Timeout: %.2fs" % (percDelta * NO_DELTA_TIMEOUT), (20, 120), cv2.FONT_HERSHEY_TRIPLEX, 1, convertColor(percDelta))
             if percDelta <= 0.0:
